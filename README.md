@@ -14,5 +14,5 @@ There is no installer yet, so please follow instructions below. *Unless there is
 1. Install these dependencies:
    * Python 3
    * PyQt5
-2. Download and extract the program
+2. Download the program
 3. Run `python AerialWare.py`
