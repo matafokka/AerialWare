@@ -369,14 +369,14 @@
               <item row="3" column="1">
                <widget class="QLineEdit" name="xBottomLeft">
                 <property name="text">
-                 <string>0</string>
+                 <string>37.462632</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="1">
                <widget class="QLineEdit" name="xTopLeft">
                 <property name="text">
-                 <string>0</string>
+                 <string>37.462002</string>
                 </property>
                </widget>
               </item>
@@ -393,14 +393,14 @@
               <item row="4" column="1">
                <widget class="QLineEdit" name="xBottomRight">
                 <property name="text">
-                 <string>20</string>
+                 <string>37.470657</string>
                 </property>
                </widget>
               </item>
               <item row="1" column="2">
                <widget class="QLineEdit" name="yTopLeft">
                 <property name="text">
-                 <string>0</string>
+                 <string>55.781111</string>
                 </property>
                </widget>
               </item>
@@ -417,14 +417,14 @@
               <item row="4" column="2">
                <widget class="QLineEdit" name="yBottomRight">
                 <property name="text">
-                 <string>20</string>
+                 <string>55.779033</string>
                 </property>
                </widget>
               </item>
               <item row="3" column="2">
                <widget class="QLineEdit" name="yBottomLeft">
                 <property name="text">
-                 <string>20</string>
+                 <string>55.77902</string>
                 </property>
                </widget>
               </item>
@@ -471,21 +471,21 @@
               <item row="2" column="1">
                <widget class="QLineEdit" name="xTopRight">
                 <property name="text">
-                 <string>20</string>
+                 <string>37.470767</string>
                 </property>
                </widget>
               </item>
               <item row="2" column="2">
                <widget class="QLineEdit" name="yTopRight">
                 <property name="text">
-                 <string>0</string>
+                 <string>55.781217</string>
                 </property>
                </widget>
               </item>
               <item row="6" column="1">
                <widget class="QLineEdit" name="xDelimiter">
                 <property name="text">
-                 <string>1</string>
+                 <string>0.0001</string>
                 </property>
                </widget>
               </item>
@@ -502,7 +502,7 @@
               <item row="6" column="2">
                <widget class="QLineEdit" name="yDelimiter">
                 <property name="text">
-                 <string>1</string>
+                 <string>0.0001</string>
                 </property>
                </widget>
               </item>

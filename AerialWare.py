@@ -22,8 +22,8 @@ from PyQt5.QtSvg import QSvgGenerator
 from PyQt5.QtGui import QPixmap, QPolygonF, QBrush, QPen, QColor, QTransform, QPainter
 from PyQt5.QtCore import QPointF, QLineF, Qt
 # For loading ui file
-from PyQt5 import uic
-import sys
+from PyQt5.uic import loadUi
+from sys import argv, exit
 
 # Main window of application
 class Window(QMainWindow):
@@ -31,7 +31,7 @@ class Window(QMainWindow):
 		# Make this app super awesome
 		super().__init__()
 		# Load UI from file
-		uic.loadUi('ui/mainwindow.ui', self)
+		loadUi('ui/mainwindow.ui', self)
 		# Initialize step 1
 		self.stepOne()
 
@@ -74,7 +74,7 @@ class Window(QMainWindow):
 			msg.setWindowTitle("AerialWare - Invalid image")
 			msg.setText("It's not an image. Please open a valid image.")
 			msg.exec_()
-	
+
 	def enableItems(self):
 		"""Enables controls
 		"""
@@ -140,7 +140,7 @@ class Window(QMainWindow):
 			errors += "latitude"
 
 		if errors != "":
-			setError("delimiters should be more than zero. Please set correct" + errors + "delimiter.")
+			setError("delimiters should be more than zero. Please set correct " + errors + " delimiter.")
 			return
 
 		# And calculate px / deg ratio, i.e. deg * (px / deg) = px
@@ -155,16 +155,16 @@ class Window(QMainWindow):
 
 		errors = ""
 		if self.xDTop > self.width:
-			errors += "Longtitude delimiter is less than given size of top of the image. Please check longtitude of top corners.\n"
+			errors += "Longtitude delimiter is less than given size of top of the image. Please check longtitude of top corners.<br>"
 		if self.xDBottom > self.width:
-			errors += "Longtitude delimiter is less thagiven n size of bottom of the image. Please check longtitude of bottom corners.\n"
+			errors += "Longtitude delimiter is less thagiven n size of bottom of the image. Please check longtitude of bottom corners.<br>"
 		if self.yDLeft > self.height:
-			errors += "Latitude delimiter is less than given size of left of the image. Please check latitude of left corners.\n"
+			errors += "Latitude delimiter is less than given size of left of the image. Please check latitude of left corners.<br>"
 		if self.yDRight > self.height:
-			errors += "Latitude delimiter is less than diven size of right of the image. Please check latitude of right corners.\n"
+			errors += "Latitude delimiter is less than diven size of right of the image. Please check latitude of right corners.<br>"
 
 		if errors != "":
-			setError("something's wrong with given data:\n" + errors)
+			setError("something's wrong with given data:<br>" + errors)
 			return
 
 		self.turnPage()
@@ -181,7 +181,6 @@ class Window(QMainWindow):
 			Returns:
 				QPointF(x, y) -- intersection of two given lines
 			"""
-			#TODO: Divider = 0 sometimes, correct it
 			divider = ((x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4))
 			if divider == 0:
 				return None
@@ -253,17 +252,12 @@ class Window(QMainWindow):
 		self.scene.setSceneRect(rect)
 		
 		self.turnPage()
-		self.btnDraw.clicked.connect(self.stepFour)
+		self.btnDraw.clicked.connect(self.scene.drawPaths)
 		self.btnNext.setText("Save")
 		self.btnNext.disconnect()
 		self.btnNext.clicked.connect(self.save)
 
 	##################
-
-	def stepFour(self):
-		"""Step 4 -- Find and draw flight paths
-		"""
-		self.scene.drawPaths()
 
 	def save(self):
 		"""Saves user results
@@ -279,7 +273,7 @@ class Window(QMainWindow):
 		painter = QPainter(gen)
 		self.scene.render(painter)
 		painter.end()
-		sys.exit(None)
+		exit(None)
 
 	##################
 	
@@ -321,6 +315,9 @@ class Window(QMainWindow):
 		self.Image.resetTransform()
 		self.Image.scale(value, value)
 		
+##################
+
+# Custom subclasses
 
 class QCustomScene(QGraphicsScene):
 	def __init__(self, *args, **kwargs):
@@ -479,10 +476,10 @@ class QCustomGraphicsPolygonItem(QGraphicsPolygonItem):
 
 if __name__ == '__main__':
 	# Create an instance of QApplication
-	app = QApplication(sys.argv)
+	app = QApplication(argv)
 	# Create an instance of our Window class
 	window = Window()
 	# Show window
 	window.show()
 	# Execute app and also write action for exiting
-	sys.exit(app.exec_())
+	exit(app.exec_())
