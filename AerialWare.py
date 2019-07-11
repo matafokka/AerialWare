@@ -17,21 +17,69 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 """
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QGraphicsPixmapItem, QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QGraphicsPolygonItem
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QGraphicsPixmapItem, QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QGraphicsPolygonItem, QWidget, QVBoxLayout
 from PyQt5.QtSvg import QSvgGenerator
 from PyQt5.QtGui import QPixmap, QPolygonF, QBrush, QPen, QColor, QTransform, QPainter
-from PyQt5.QtCore import QPointF, QLineF, Qt
-# For loading ui file
-from PyQt5.uic import loadUi
+from PyQt5.QtCore import QPointF, QLineF, Qt, pyqtSignal
+from PyQt5.uic import loadUi  # For loading ui files
 from sys import argv, exit
+import importlib
+import os
 
 # Main window of application
 class Window(QMainWindow):
+	"""Places AerialWare into QMainWindow. Uses predefined .ui file.
+	"""
 	def __init__(self):
-		# Make this app super awesome
 		super().__init__()
 		# Load UI from file
 		loadUi('ui/mainwindow.ui', self)
+		# Add AerialWare
+		self.content = AerialWareWidget()
+		self.centralWidget().layout().addWidget(self.content)
+
+class AerialWareWidget(QWidget):
+	"""Core of AerialWare. Place it into your application, and you're good to go.
+
+	Constructor args:
+		getResultsAfterCompletion -- signifies if it's needed to get results. Already set to True if you use AerialWare as a module.
+	Methods:
+		!!! Use ONLY methods listed below !!!
+		getResults() -- returns dictionary with results if user is done. Returns None otherwise.
+	Signals:
+		done -- emitted when user is done with the program. Call getResults() in your slot to get results.
+	"""
+	
+	done = pyqtSignal()
+
+	def __init__(self, getResultsAfterCompletion = False):
+		super().__init__()
+		# Set flag to return results after user is done with the program.
+		self.getResultsAfterCompletion = getResultsAfterCompletion
+		# Load UI from file
+		loadUi('ui/form.ui', self)
+		# Create scene
+		self.scene = QCustomScene()
+		self.Image.setScene(self.scene)
+
+		self.errorsAreHere = False  # Used to indicate step with errors for changing languages
+
+		# Load languages
+		lang_dir = os.path.dirname(__file__) + "/lang/"
+		for lang in os.listdir(lang_dir):
+			if os.path.isfile(lang_dir + lang):
+				lg = importlib.import_module("lang." + os.path.splitext(lang)[0])
+				name = lg.getName()
+				self.comboLang.addItem(name, lg)
+		self.comboLang.currentIndexChanged.connect(self.changeLanguage)
+		# Use English by default
+		index = self.comboLang.findText("English")
+		self.comboLang.setCurrentIndex(index)
+		self.changeLanguage()
+
+		# Set default zoom value
+		self.zoom = 100.0
+
 		# Initialize step 1
 		self.stepOne()
 
@@ -40,7 +88,11 @@ class Window(QMainWindow):
 		"""Step 1 -- loading image, connecting events to controls
 		"""
 		self.disableItems()
-		self.comboLang.setVisible(False) # Hide language panel because there are no additional languages yet
+		# If user opened image with this program
+		try:
+			self.loadImage(argv[1])
+		except IndexError:
+			self.loadImage(os.path.dirname(__file__) + "/ui/img/logo.png")
 		# Connect events
 		self.btnOpenImage.clicked.connect(self.loadImage)
 		self.btnNext.clicked.connect(self.stepTwo)
@@ -48,48 +100,32 @@ class Window(QMainWindow):
 		self.btnDecreaseZoom.clicked.connect(self.decreaseZoom)
 		self.editZoom.textEdited.connect(self.setZoom)
 
-	def loadImage(self):
-		# Open file dialog and get path
-		file = QFileDialog.getOpenFileName(self, 'Open image', '', 'Images (*.jpg *.jpeg *.png *.bmp);;All files (*)')[0]
+	def loadImage(self, path = None):
+		# Open file dialog and get path or try to use user's path
+		if path == None or not path:
+			file = QFileDialog.getOpenFileName(self, self.special["open_image"], "", self.special["images"] + "(*.jpg *.jpeg *.png *.bmp);;" + self.special["all_files"] + " (*)")[0]
+		else:
+			file = path
 
 		# Create a pixmap from file
 		img = QPixmap(file)
 
-		# Check if it's an image
+		# Check if it's an image and draw it or raise error message
 		if not img.isNull():
-			# Set opened image to the scene
+			self.scene.clear()
 			item = QGraphicsPixmapItem(img)
-			self.scene = QCustomScene()
 			self.scene.addItem(item)
-			self.Image.setScene(self.scene)
 			self.height = img.height()
 			self.width = img.width()
 			self.enableItems()
-
 		elif file != "":
-			# If it's not image and user didn't press 'Cancel' raise an error message
 			self.disableItems()
 			msg = QMessageBox()
 			msg.setIcon(QMessageBox.Critical)
-			msg.setWindowTitle("AerialWare - Invalid image")
-			msg.setText("It's not an image. Please open a valid image.")
+			msg.setWindowTitle(self.special["invalid_image_title"])
+			msg.setText(self.special["invalid_image"])
 			msg.exec_()
 
-	def enableItems(self):
-		"""Enables controls
-		"""
-		self.editZoom.setEnabled(True)
-		self.btnDecreaseZoom.setEnabled(True)
-		self.btnIncreaseZoom.setEnabled(True)
-		self.btnNext.setEnabled(True)
-
-	def disableItems(self):
-		"""Disables controls
-		"""
-		self.editZoom.setEnabled(False)
-		self.btnDecreaseZoom.setEnabled(False)
-		self.btnIncreaseZoom.setEnabled(False)
-		self.btnNext.setEnabled(False)
 	##################
 
 	def stepTwo(self):
@@ -104,12 +140,12 @@ class Window(QMainWindow):
 	def stepThree(self):
 		"""Step 3 -- Do basically everything.
 		"""
-
+		self.errorsAreHere = True # Used to indicate step with errors for changing languages
 		# Validate data
 		def setError(s):
 			"""Formats string for displaying
 			"""
-			self.lblDataError.setText("<html><head/><body><div style='font-size: 12pt'>Can't procede, " + s + "</div></body></html>")
+			self.lblDataError.setText("<html><head/><body><div style='font-size: 12pt'>" + self.special["err_data"] + s + "</div></body></html>")
 
 		# Try to read data
 		try:
@@ -127,20 +163,12 @@ class Window(QMainWindow):
 			yD = float(self.yDelimiter.text())
 		except:
 			# Write error message
-			setError("some fields contains non-numeric values. Please recheck everything and click \"Next\" again.")
+			setError(self.special["err_numeric"])
 			return
 
 		# Check for metric errors
-		errors = ""
-		if xD <= 0:
-			errors += "longtitude"
-		if yD <= 0:
-			if errors != "":
-				errors += " and "
-			errors += "latitude"
-
-		if errors != "":
-			setError("delimiters should be more than zero. Please set correct " + errors + " delimiter.")
+		if xD <= 0 or yD <= 0:
+			setError(self.special["err_delimiters"])
 			return
 
 		# And calculate px / deg ratio, i.e. deg * (px / deg) = px
@@ -150,21 +178,21 @@ class Window(QMainWindow):
 			self.yDLeft = int(self.height / abs(yTL - yBL) * yD)
 			self.yDRight = int(self.height / abs(yTR - yBR) * yD)
 		except ZeroDivisionError:
-			setError("some given corners are at the same point. Please recheck every coordinate.")
+			setError(self.special["err_corners"])
 			return
 
 		errors = ""
 		if self.xDTop > self.width:
-			errors += "Longtitude delimiter is less than given size of top of the image. Please check longtitude of top corners.<br>"
+			errors += self.special["err_long_top"] + "<br>"
 		if self.xDBottom > self.width:
-			errors += "Longtitude delimiter is less thagiven n size of bottom of the image. Please check longtitude of bottom corners.<br>"
+			errors += self.special["err_long_bottom"] + "<br>"
 		if self.yDLeft > self.height:
-			errors += "Latitude delimiter is less than given size of left of the image. Please check latitude of left corners.<br>"
+			errors += self.special["err_lat_left"] + "<br>"
 		if self.yDRight > self.height:
-			errors += "Latitude delimiter is less than diven size of right of the image. Please check latitude of right corners.<br>"
+			errors += self.special["err_lat_right"] + "<br>"
 
 		if errors != "":
-			setError("something's wrong with given data:<br>" + errors)
+			setError(self.special["err_sides"] + "<br>" + errors)
 			return
 
 		self.turnPage()
@@ -221,7 +249,7 @@ class Window(QMainWindow):
 		
 		# If nothing has been added
 		if points == []:
-			setError("can't generate grid. I dont even know how you managed to get this error. Please recheck coordinates and try again.")
+			setError(self.special["err_points"])
 			return
 
 		# Get scene geometry to preserve scene expanding
@@ -252,36 +280,139 @@ class Window(QMainWindow):
 		self.scene.setSceneRect(rect)
 		
 		self.turnPage()
-		self.btnDraw.clicked.connect(self.scene.drawPaths)
-		self.btnNext.setText("Save")
+		if self.getResultsAfterCompletion:
+			nextText = self.special["done"]
+		else:
+			nextText = self.special["save"]
+		self.btnNext.setText(nextText)
 		self.btnNext.disconnect()
 		self.btnNext.clicked.connect(self.save)
+		self.errorsAreHere = False # Used to indicate step with errors for changing languages
 
 	##################
 
 	def save(self):
-		"""Saves user results
+		"""If AerialWare has been used as a module emits signal 'done'. Saves user results into SVG otherwise.
 		"""
-		rect = self.scene.sceneRect()
-		file = QFileDialog.getSaveFileName(self, 'Save file', '', 'Vector Image (*.svg)')[0]
-		if file == "":
+		if self.getResultsAfterCompletion:
+			self.done.emit()
 			return
+
+		self.disableItems()
+
+		file = QFileDialog.getSaveFileName(self, self.special["save_file"], "", self.special["vector_image"] + " (*.svg)")[0]
+		if file == "":
+			self.enableItems()
+			return
+
+		rect = self.scene.sceneRect()
 		gen = QSvgGenerator()
 		gen.setFileName(file)
 		gen.setSize(rect.size().toSize())
 		gen.setViewBox(rect)
+		gen.setTitle("Flight paths generated by AerialWare")
+		gen.setDescription(gen.title())
+
+		# Notice: painting will temporarily freeze application because QGraphicsScene::render is not thread safe.
+		# Don't try putting this into python's threads and QThread, doesn't work, I've tried, trust me XD.
 		painter = QPainter(gen)
 		self.scene.render(painter)
 		painter.end()
-		exit(None)
+
+		self.enableItems()
+
+	def getResults(self):
+		"""Returns results of the program in a dictionary.
+		Results currently are:
+			scene -- QCustomGraphicsScene. Contains image and flight paths
+		"""
+		if self.getResultsAfterCompletion:
+			return {
+				"scene": self.scene
+			}
+		return None
 
 	##################
 	
 	# Misc stuff
-	def changeLanguage(self):
-		"""Changes language. Not implemented yet.
+	def enableItems(self):
+		"""Enables controls
 		"""
-		pass
+		self.scene.setEnabled(True)
+		self.editZoom.setEnabled(True)
+		self.btnDecreaseZoom.setEnabled(True)
+		self.btnIncreaseZoom.setEnabled(True)
+		self.btnNext.setEnabled(True)
+
+	def disableItems(self):
+		"""Disables controls
+		"""
+		self.scene.setEnabled(False)
+		self.editZoom.setEnabled(False)
+		self.btnDecreaseZoom.setEnabled(False)
+		self.btnIncreaseZoom.setEnabled(False)
+		self.btnNext.setEnabled(False)
+
+	def changeLanguage(self):
+		"""Changes app language.
+		Uses unified interface, but doesn't check if file is valid language pack. Please refer to any default language as an example if you want to make translations.
+		"""
+		# Get language
+		lang = self.comboLang.currentData()
+
+		# Get special data
+		self.special = lang.getSpecial()
+		
+		# Change text of labels and buttons
+		controls = lang.getControls()
+		for widget in controls:
+			getattr(self, widget).setText(controls[widget])
+		
+		# Change text of task labels
+		start = "<html><head/><body><div style='font-size: 12pt;'>"
+		end = "</div></body></html>"
+
+		task = lang.getTaskOne()
+		self.lblTask_1.setText(start + f"""
+			<p style='font-size: 14pt; text-align: center;'><b>{task["heading"]}</b></p>
+			<p><b>{task["heading_about"]}</b></p>
+			<p>{task["about_1"]}</p>
+			<p>{task["about_2"]}</p>
+			<p><b>{task["working_title"]}</b></p>
+			<p>{task["working"]}</p>
+			<p><b>{task["this_step_bold"]}</b>{task["this_step"]}</p>
+			<p><b>{task["note_bold"]}</b>{task["note"]}</p>
+			""" + end )
+
+		task = lang.getTaskTwo()
+		self.lblTask_2.setText(start + f"""
+			<p><b>{task["set_title"]}</b></p>
+			<ul>
+				<li>{task["coordinates"]}</li>
+				<li>{task["delimiters"]}</li>
+			</ul>
+		""" + end)
+		
+		task = lang.getTaskThree()
+		if self.getResultsAfterCompletion:
+			btnText = self.special["done"]
+		else:
+			btnText = self.special["save"]
+
+		self.lblTask_3.setText(start + f"""
+			<p>{task["intro"]}<b>{task["click_bold"]}</b></p>
+			<p>{task["path"]}</p>
+			<p>{task["save_1"]} <b>\"{btnText}\"</b>{task["save_2"]}</p>
+			<p><b>{task["legend_title"]}</b></p>
+			<ul>
+				<li><span style="color: red;">{task["red"]}</span>{task["line_1"]}<span style="color: green;">{task["green"]}</span>{task["line_2"]}</li>
+				<li><b>{task["dashed_bold"]}</b>{task["line_3"]}</li>
+			</ul>
+			<p><b>{task["note_bold"]}</b>{task["note"]} ¯\_(ツ)_/¯</p>
+		""" + end)
+
+		if self.errorsAreHere and self.lblDataError.text() != "":
+			self.stepThree()
 		
 	def turnPage(self):
 		"""Turns page of "Steps"
@@ -309,24 +440,37 @@ class Window(QMainWindow):
 		try:
 			value = float(self.editZoom.text()) * 0.01
 		except ValueError:
-			self.editZoom.setText("100.0")
+			self.editZoom.setText(str(self.zoom * 100))
 			self.setZoom()
 			return
 		self.Image.resetTransform()
 		self.Image.scale(value, value)
+		self.zoom = value
 		
 ##################
 
 # Custom subclasses
 
 class QCustomScene(QGraphicsScene):
+	"""Subclass of QGraphicsScene. Does a lot of program-specific stuff.
+	Works with custom polygons, re-implements selection, draws paths.
+	"""
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs) 
 		self.customSelectedItems = []
+		self.enabled = True
+
+	def setEnabled(self, enabled):
+		"""Enables or disables scene from responding to mouse events.
+		"""
+		self.enabled = enabled
 
 	def mousePressEvent(self, event):
 		"""Checks and unchecks squares under cursor if RMB has been pressed
 		"""
+		if not self.enabled:
+			return
+			
 		if event.button() != Qt.RightButton:
 			return
 		item = self.itemAt(event.scenePos(), QTransform())
@@ -340,6 +484,7 @@ class QCustomScene(QGraphicsScene):
 		else:
 			self.customSelectedItems.append(item)
 			item.setBrush(item.checkBrush)
+		self.drawPaths()
 
 	def selectedItems(self):
 		return self.customSelectedItems
@@ -381,11 +526,13 @@ class QCustomScene(QGraphicsScene):
 		# Pen for main lines
 		pen = QPen(color)
 		pen.setWidth(2)
+		pen.setCosmetic(True)
 		# Pen for turning lines
 		pen2 = QPen(color)
 		pen2.setWidth(2)
 		pen2.setStyle(Qt.DashLine)
 		pen2.setDashOffset(2)
+		pen2.setCosmetic(True)
 
 		# Sort selected items
 		items.sort(key=lambda item: item.getRowCol()[sort_second])
@@ -427,11 +574,14 @@ class QCustomScene(QGraphicsScene):
 
 
 class QCustomGraphicsPolygonItem(QGraphicsPolygonItem):
+	"""Represents cell of a grid. Contains program-specific methods.
+	"""
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 		# Set appearance
 		pen = QPen(QColor(30, 30, 255))
 		pen.setWidth(2)
+		pen.setCosmetic(True)
 		self.setPen(pen)
 		self.checkBrush = QBrush(QColor(130, 130, 255, 100))
 		self.uncheckBrush = QBrush(QColor(0, 0, 0, 0))
@@ -467,19 +617,53 @@ class QCustomGraphicsPolygonItem(QGraphicsPolygonItem):
 		self.col = col
 
 	def getRowCol(self):
-		"""Returns dict with row and column
+		"""Returns dictionary with row and column
 		"""
 		return {
 			"row": self.row,
 			"col": self.col
 		}
 
+
+class AerialWare():
+	"""Runs AerialWare. Work with program only through this class.
+
+	AerialWare can be used in two modes:
+		1. Standalone -- used by defalt. Check runStandalone() method to get more information. AerialWare doesn't communicate with your program in any way in this mode.
+		2. Module -- use this to integrate AerialWare into your program.
+
+	Usage in module mode:
+		1. Create instance of this class and call getQWidget():
+			self.program = AerialWare().getQWidget()
+		2. When user is done AerialWare will emit corresponding signal. Connect 'done' signal to your slot:
+			self.program.done.connect(self.slot)
+		3. Get results. In your slot call getResults() method of the program:
+			def slot(self):
+				results = self.program.getResults()
+				# Process results
+				...
+		4. Close the program. It is your responsibility to do this. You may want to leave the program and re-process results so user will not go through the whole stuff again.
+	"""
+
+	def __init__(self):
+		pass
+	
+	def runStandalone(self):
+		"""Runs AerialWare as standalone application, in window and stuff.
+		"""
+		# Create an instance of QApplication
+		app = QApplication(argv)
+		# Create an instance of our Window class
+		window = Window()
+		# Show window
+		window.show()
+		# Execute app and also write action for exiting
+		exit(app.exec_())
+
+	def getQWidget(self):
+		"""Returns AerialWare as QWidget.
+		"""
+		return AerialWareWidget(True)
+
 if __name__ == '__main__':
-	# Create an instance of QApplication
-	app = QApplication(argv)
-	# Create an instance of our Window class
-	window = Window()
-	# Show window
-	window.show()
-	# Execute app and also write action for exiting
-	exit(app.exec_())
+	AerialWare().runStandalone()
