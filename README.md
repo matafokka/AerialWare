@@ -20,20 +20,20 @@ There is no installer yet, so please follow instructions below. *Unless there is
 # I wanna use it in my software!
 Great! AerialWare is easy to integrate, just follow these steps:
 1. Copy AerialWare to directory inside your app.
-2. Include AerialWare.py
-3. Create instance of this class and call getQWidget():
-    self.program = AerialWare().getQWidget()
-4. Put this somewhere in your app.
-5. When user is done AerialWare will emit corresponding signal. Connect 'done' signal to your slot:
-    self.program.done.connect(self.slot)
-6. Get results. In your slot call getResults() method of the program:
+    `Include AerialWare.py`
+2. Create instance of this class and call getQWidget():
+    `self.program = AerialWare().getQWidget()`
+3. Put it somewhere in your app.
+4. When user is done AerialWare will emit corresponding signal. Connect 'done' signal to your slot:
+    `self.program.done.connect(self.slot)`
+5. Get results. In your slot call getResults() method of the program:
     ```
     def slot(self):
       results = self.program.getResults()
       # Process results
       ...
     ```
-7. Close the program. It is your responsibility to do this. You may want to leave the program and re-process results so user will not go through the whole stuff again.
+6. Close the program. It is your responsibility to do this. You may want to leave the program and re-process results so user will not go through the whole stuff again.
 
 # I wanna translate AerialWare!
 Nice! Just follow these steps:
