@@ -61,6 +61,8 @@ class AerialWareWidget(QWidget):
 		# Create scene
 		self.scene = QCustomScene()
 		self.Image.setScene(self.scene)
+		# Use antialiasing
+		self.Image.setRenderHint(QPainter.Antialiasing)
 
 		self.errorsAreHere = False  # Used to indicate step with errors for changing languages
 
