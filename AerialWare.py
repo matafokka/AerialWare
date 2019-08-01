@@ -21,7 +21,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox,
 from PyQt5.QtSvg import QSvgGenerator
 from PyQt5.QtGui import QPixmap, QPolygonF, QBrush, QPen, QColor, QTransform, QPainter
 from PyQt5.QtCore import QPointF, QLineF, Qt, pyqtSignal
-from PyQt5.uic import loadUi  # For loading ui files
+from PyQt5.uic import loadUi # For loading ui files
 from sys import argv, exit
 import importlib
 import os
@@ -43,9 +43,6 @@ class AerialWareWidget(QWidget):
 
 	Constructor args:
 		getResultsAfterCompletion -- signifies if it's needed to get results. Already set to True if you use AerialWare as a module.
-	Methods:
-		!!! Use ONLY methods listed below !!!
-		getResults() -- returns dictionary with results if user is done. Returns None otherwise.
 	Signals:
 		done -- emitted when user is done with the program. Call getResults() in your slot to get results.
 	"""
@@ -59,53 +56,62 @@ class AerialWareWidget(QWidget):
 		# Load UI from file
 		loadUi('ui/form.ui', self)
 		# Create scene
-		self.scene = QCustomScene()
+		self.scene = _QCustomScene()
 		self.Image.setScene(self.scene)
 		# Use antialiasing
 		self.Image.setRenderHint(QPainter.Antialiasing)
 
-		self.errorsAreHere = False  # Used to indicate step with errors for changing languages
+		self.errorsAreHere = False # Used to indicate step with errors for changing languages
+		self.endIsHere = False # Used to indicate where Next button should have "Save" or "Done" caption.
 
 		# Load languages
-		lang_dir = os.path.dirname(__file__) + "/lang/"
-		for lang in os.listdir(lang_dir):
-			if os.path.isfile(lang_dir + lang):
-				lg = importlib.import_module("lang." + os.path.splitext(lang)[0])
-				name = lg.getName()
+
+		langDir = os.path.dirname(__file__) + "/lang/"
+		for lang in os.listdir(langDir):
+			ext = os.path.splitext(lang)
+			if os.path.isfile(langDir + lang) and ext[1] == ".py":
+				lg = importlib.import_module("lang." + ext[0])
+				name = lg.name
 				self.comboLang.addItem(name, lg)
-		self.comboLang.currentIndexChanged.connect(self.changeLanguage)
-		# Use English by default
+		self.comboLang.currentIndexChanged.connect(self.__changeLanguage)
+		
+		# Use English by default. Use it as fallback language. If it's not found, display error message and exit.
 		index = self.comboLang.findText("English")
+		if index == -1:
+			QMessageBox(QMessageBox.Critical, "AerialWare - Error", "English localization not found. It should be in file " + langDir + "english.py. AerialWare uses it as base localization. Please, download AerialWare again.").exec()
+			exit()
+
 		self.comboLang.setCurrentIndex(index)
-		self.changeLanguage()
+		self.lang = _LanguageChanger(self.comboLang.currentData()) # Create language changer
+		self.__changeLanguage()
 
 		# Set default zoom value
 		self.zoom = 100.0
 
 		# Initialize step 1
-		self.stepOne()
+		self.__stepOne()
 
 	##################
-	def stepOne(self):
+	def __stepOne(self):
 		"""Step 1 -- loading image, connecting events to controls
 		"""
-		self.disableItems()
+		self.__disableItems()
 		# If user opened image with this program
 		try:
-			self.loadImage(argv[1])
+			self.__loadImage(argv[1])
 		except IndexError:
-			self.loadImage(os.path.dirname(__file__) + "/ui/img/logo.png")
+			self.__loadImage(os.path.dirname(__file__) + "/ui/img/logo.png")
 		# Connect events
-		self.btnOpenImage.clicked.connect(self.loadImage)
-		self.btnNext.clicked.connect(self.stepTwo)
-		self.btnIncreaseZoom.clicked.connect(self.increaseZoom)
-		self.btnDecreaseZoom.clicked.connect(self.decreaseZoom)
-		self.editZoom.textEdited.connect(self.setZoom)
+		self.btnOpenImage.clicked.connect(self.__loadImage)
+		self.btnNext.clicked.connect(self.__stepTwo)
+		self.btnIncreaseZoom.clicked.connect(self.__increaseZoom)
+		self.btnDecreaseZoom.clicked.connect(self.__decreaseZoom)
+		self.editZoom.textEdited.connect(self.__setZoom)
 
-	def loadImage(self, path = None):
+	def __loadImage(self, path = None):
 		# Open file dialog and get path or try to use user's path
 		if path == None or not path:
-			file = QFileDialog.getOpenFileName(self, self.special["open_image"], "", self.special["images"] + "(*.jpg *.jpeg *.png *.bmp);;" + self.special["all_files"] + " (*)")[0]
+			file = QFileDialog.getOpenFileName(self, self.lang.openImage, "", self.lang.images + "(*.jpg *.jpeg *.png *.bmp);;" + self.lang.allFiles + " (*)")[0]
 		else:
 			file = path
 
@@ -116,113 +122,125 @@ class AerialWareWidget(QWidget):
 		if not img.isNull():
 			self.scene.clear()
 			item = QGraphicsPixmapItem(img)
-			self.scene.addItem(item)
 			self.height = img.height()
 			self.width = img.width()
-			self.enableItems()
+			self.scene.addItem(item)
+			self.__enableItems()
 		elif file != "":
-			self.disableItems()
+			self.__disableItems()
 			msg = QMessageBox()
 			msg.setIcon(QMessageBox.Critical)
-			msg.setWindowTitle(self.special["invalid_image_title"])
-			msg.setText(self.special["invalid_image"])
+			msg.setWindowTitle(self.lang.invalidImageTitle)
+			msg.setText(self.lang.invalidImage)
 			msg.exec_()
 
 	##################
 
-	def stepTwo(self):
+	def __stepTwo(self):
 		"""Step 2 -- Needed only for first click. Step 3 does all the job.
 		"""
-		self.turnPage()
+		self.__turnPage()
 		self.btnNext.disconnect()
-		self.btnNext.clicked.connect(self.stepThree)
+		self.btnNext.clicked.connect(self.__stepThree)
 
 	##################
 
-	def stepThree(self):
+	def __stepThree(self):
 		"""Step 3 -- Do basically everything.
 		"""
 		self.errorsAreHere = True # Used to indicate step with errors for changing languages
 		# Validate data
-		def setError(s):
-			"""Formats string for displaying
+		def setError(e):
+			"""Displays string e.
 			"""
-			self.lblDataError.setText("<html><head/><body><div style='font-size: 12pt'>" + self.special["err_data"] + s + "</div></body></html>")
+			self.lblDataError.setText("<html><head/><body><div style='font-size: 12pt'>" + self.lang.errData + e + "</div></body></html>")
 
-		# Try to read data
+		# Try to read data. We need to create fields, because this will be used later in other functions.
 		try:
-			xTL = float(self.xTopLeft.text())
-			xTR = float(self.xTopRight.text())
-			xBL = float(self.xBottomLeft.text())
-			xBR = float(self.xBottomRight.text())
+			self.xTL = float(self.xTopLeft.text())
+			self.xTR = float(self.xTopRight.text())
+			self.xBL = float(self.xBottomLeft.text())
+			self.xBR = float(self.xBottomRight.text())
 
-			yTL = float(self.yTopLeft.text())
-			yTR = float(self.yTopRight.text())
-			yBL = float(self.yBottomLeft.text())
-			yBR = float(self.yBottomRight.text())
+			self.yTL = float(self.yTopLeft.text())
+			self.yTR = float(self.yTopRight.text())
+			self.yBL = float(self.yBottomLeft.text())
+			self.yBR = float(self.yBottomRight.text())
 
-			xD = float(self.xDelimiter.text())
-			yD = float(self.yDelimiter.text())
+			self.xD = float(self.xDelimiter.text())
+			self.yD = float(self.yDelimiter.text())
 		except:
 			# Write error message
-			setError(self.special["err_numeric"])
+			setError(self.lang.errNumeric)
 			return
 
 		# Check for metric errors
-		if xD <= 0 or yD <= 0:
-			setError(self.special["err_delimiters"])
+		if self.xD <= 0 or self.yD <= 0:
+			setError(self.lang.errDelimiters)
 			return
 
-		# And calculate px / deg ratio, i.e. deg * (px / deg) = px
+		# Convert delimiters to pixels.
+		# Value of another coordinate doesn't matter.
+		# If you'll draw a random line and draw crossing lines parallel to one of axes with same distance between these lines by another axis, you'll split your random line into equal pieces.
+		# See for yourself:
+		# Y
+		# ^ ___\_____
+		# | ____\____
+		# | _____\___
+		# |       \
+		# |-----------> X
+		# You can try it on paper or prove this "theorem" doing some math.
 		try:
-			self.xDTop = int(self.width / abs(xTL - xTR) * xD)
-			self.xDBottom = int(self.width / abs(xBL - xBR) * xD)
-			self.yDLeft = int(self.height / abs(yTL - yBL) * yD)
-			self.yDRight = int(self.height / abs(yTR - yBR) * yD)
+			self.xDTop = self.width / abs(self.xTL - self.xTR) * self.xD
+			self.xDBottom = self.width / abs(self.xBL - self.xBR) * self.xD
+			self.yDLeft = self.height / abs(self.yTL - self.yBL) * self.yD
+			self.yDRight = self.height / abs(self.yTR - self.yBR) * self.yD
 		except ZeroDivisionError:
-			setError(self.special["err_corners"])
+			setError(self.lang.errCorners)
 			return
+		
+		# Now do the same stuff, but find how much pixels in one degree.
+		# We won't find absolute value for subtraction because axes of image in geographic system may be not codirectional to axes of image in Qt system.
+		self.topX = (self.xTR - self.xTL) / self.width
+		self.bottomX = (self.xBR - self.xBL) / self.width
+		self.leftY = (self.yTL - self.yBL) / self.height
+		self.rightY = (self.yTR - self.yBR) / self.height
+
+		# Sides of image in geographic system
+		self.top = QLineF(self.xTL, self.yTL, self.xTR, self.yTR)
+		self.bottom = QLineF(self.xBL, self.yBL, self.xBR, self.yBR)
+		self.left = QLineF(self.xTL, self.yTL, self.xBL, self.yBL)
+		self.right = QLineF(self.xTR, self.yTR, self.xBR, self.yBR)
 
 		errors = ""
 		if self.xDTop > self.width:
-			errors += self.special["err_long_top"] + "<br>"
+			errors += self.lang.errLongTop + "<br>"
 		if self.xDBottom > self.width:
-			errors += self.special["err_long_bottom"] + "<br>"
+			errors += self.lang.errLongBottom + "<br>"
 		if self.yDLeft > self.height:
-			errors += self.special["err_lat_left"] + "<br>"
+			errors += self.lang.errLatLeft + "<br>"
 		if self.yDRight > self.height:
-			errors += self.special["err_lat_right"] + "<br>"
+			errors += self.lang.errLatRight + "<br>"
 
 		if errors != "":
-			setError(self.special["err_sides"] + "<br>" + errors)
+			setError(self.lang.errSides + "<br>" + errors)
 			return
+		
+		# Check if given coordinates form 8-shaped figure
+		if (self.xTL > self.xTR and self.xBL < self.xBR) or (self.xTL < self.xTR and self.xBL > self.xBR) or (self.yTL > self.yBL and self.yTR < self.yBR) or (self.yTL < self.yBL and self.yTR > self.yTL):
+			choice = QMessageBox(QMessageBox.Warning, "AerialWare", self.lang.warningCoordinates, QMessageBox.Yes | QMessageBox.No).exec()
+			if choice == QMessageBox.No:
+				return
 
-		self.turnPage()
+		self.__turnPage()
 
 		# Draw grid
-		def intersection(x1, y1, x2, y2, x3, y3, x4, y4):
-			"""Calculates intersection on two lines
-			Args:
-				x1, y1 -- first point of first line
-				x2, y2 -- second point of first line
-				x3, y3 -- first point of second line
-				x4, y4 -- second point of second line
-				These coordintaes must represent coordinates in pixels
-			Returns:
-				QPointF(x, y) -- intersection of two given lines
-			"""
-			divider = ((x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4))
-			if divider == 0:
-				return None
-			x = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / divider
-			y = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / divider
-			return QPointF(int(x), int(y))
 
 		# Set points for grid
 		# Points will look like:
 		# [point, point, ...],
 		# [point, point, ...], ...
-		point_rows = []
+		pointRows = []
 		# Let x1, y1; x2, y2 be vertical line
 		# and x3, y3; x4, y4 be horizontal line.
 		# Thus, y1 and y2 should be always on top and bottom;
@@ -239,19 +257,23 @@ class AerialWareWidget(QWidget):
 			# Move vertical line
 			points = []
 			while x1 <= self.width or x2 <= self.width:
-				point = intersection(x1, y1, x2, y2, x3, y3, x4, y4)
-				if point != None:
-					points.append(point)
+				point = QPointF()
+				QLineF.intersect(
+					QLineF(x1, y1, x2, y2),
+					QLineF(x3, y3, x4, y4),
+					point
+				)
+				points.append(point)
 				x1 += self.xDTop
 				x2 += self.xDBottom
 			if points != []:
-				point_rows.append(points)
+				pointRows.append(points)
 			y3 += self.yDLeft
 			y4 += self.yDRight
 		
 		# If nothing has been added
 		if points == []:
-			setError(self.special["err_points"])
+			setError(self.lang.errPoints)
 			return
 
 		# Get scene geometry to preserve scene expanding
@@ -263,50 +285,162 @@ class AerialWareWidget(QWidget):
 		# Create polygons from points
 		# We'll recheck previous item
 		i = 1 # Rows
-		while i < len(point_rows):
+		while i < len(pointRows):
 			j = 1 # Points
-			while j < len(point_rows[i]):
+			while j < len(pointRows[i]):
 				# Add points in following order: top left, top right, bottom right, bottom left
 				points = [
-					point_rows[i - 1][j - 1],
-					point_rows[i - 1][j],
-					point_rows[i][j],
-					point_rows[i][j - 1]
+					pointRows[i - 1][j - 1],
+					pointRows[i - 1][j],
+					pointRows[i][j],
+					pointRows[i][j - 1]
 				]
 				# We're assigning self.bounds as parent implicitly, so we shouldn't add polygon to scene by ourselves.
-				poly = QCustomGraphicsPolygonItem(QPolygonF(points), self.bounds)
+				poly = _QCustomGraphicsPolygonItem(QPolygonF(points), self.bounds)
 				poly.setRowCol(i - 1, j - 1)
 				j += 1
 			i += 1
 		# Restore scene geometry
 		self.scene.setSceneRect(rect)
-		
-		self.turnPage()
+
+		self.__turnPage()
+		self.endIsHere = True # Used to indicate where Next button should have "Save" or "Done" caption.
 		if self.getResultsAfterCompletion:
-			nextText = self.special["done"]
+			nextText = self.lang.done
 		else:
-			nextText = self.special["save"]
+			nextText = self.lang.save
 		self.btnNext.setText(nextText)
 		self.btnNext.disconnect()
-		self.btnNext.clicked.connect(self.save)
-		self.errorsAreHere = False # Used to indicate step with errors for changing languages
+		self.btnNext.clicked.connect(self.__save)
+		self.errorsAreHere = False  # Used to indicate step with errors for changing languages
 
 	##################
 
-	def save(self):
-		"""If AerialWare has been used as a module emits signal 'done'. Saves user results into SVG otherwise.
+	def __save(self):
+		"""If AerialWare has been used as a module, emits signal 'done'. Saves user results into SVG and makes report otherwise.
 		"""
+		# Variables for report
+		self.pointsMeridian = ""
+		self.pointsHorizontal = ""
+
+		# Total lengths of paths. Used in report and methods.
+		self.lenMeridian = 0
+		self.lenMeridianWithTurns = 0
+		self.lenHorizontal = 0
+		self.lenHorizontalWithTurns = 0
+
+		# Fields for methods
+		self.pathMeridianPointsPx = []
+		self.pathMeridianPointsDeg = []
+		self.pathMeridianLinesPx = []
+		self.pathMeridianLinesWithTurnsPx = []
+		self.pathMeridianLinesDeg = []
+		self.pathMeridianLinesWithTurnsDeg = []
+
+		self.pathHorizontalPointsPx = []
+		self.pathHorizontalPointsDeg = []
+		self.pathHorizontalLinesPx = []
+		self.pathHorizontalLinesWithTurnsPx = []
+		self.pathHorizontalLinesDeg = []
+		self.pathHorizontalLinesWithTurnsDeg = []
+
+		# Process each line
+		def processLines(lines, isMeridian=False):
+			i = 2 # Counter for report
+			isEven = False # If current line is even we must swap it's points.
+			for line in lines:
+				linePx = line.line()
+				p1 = linePx.p1()
+				p2 = linePx.p2()
+				p1Deg = self.pxToDeg(p1.x(), p1.y())
+				p2Deg = self.pxToDeg(p2.x(), p2.y())
+				lineDeg = QLineF(p1Deg, p2Deg)
+				lineLength = lineDeg.length()
+
+				if isMeridian:
+					self.pathMeridianLinesWithTurnsPx.append(linePx)
+					self.pathMeridianLinesWithTurnsDeg.append(lineDeg)
+					self.lenMeridianWithTurns += lineLength
+				else:
+					self.pathHorizontalLinesWithTurnsPx.append(linePx)
+					self.pathHorizontalLinesWithTurnsDeg.append(lineDeg)
+					self.lenHorizontalWithTurns += lineLength
+
+				if line.pen().style() == Qt.SolidLine:  # Check if current line doesn't represent turn
+					if isEven:
+						p1, p2, p1Deg, p2Deg = p2, p1, p2Deg, p1Deg
+					
+					point = f'"{i - 1}","{p1Deg.x()}","{p1Deg.y()}"\n' + f'"{i}","{p2Deg.x()}","{p2Deg.y()}"\n'
+					if isMeridian:
+						self.pointsMeridian += point
+						self.pathMeridianPointsPx.extend([p1, p2])
+						self.pathMeridianPointsDeg.extend([p1Deg, p2Deg])
+						self.pathMeridianLinesPx.append(linePx)
+						self.pathMeridianLinesDeg.append(lineDeg)
+						self.lenMeridian += lineLength
+					else:
+						self.pointsHorizontal += point
+						self.pathHorizontalPointsPx.extend([p1, p2])
+						self.pathHorizontalPointsDeg.extend([p1Deg, p2Deg])
+						self.pathHorizontalLinesPx.append(linePx)
+						self.pathHorizontalLinesDeg.append(lineDeg)
+						self.lenHorizontal += lineLength
+					isEven = not isEven
+					i += 2
+
+		processLines(self.scene.getMeridianLines(), True)
+		processLines(self.scene.getHorizontalLines())
+		
 		if self.getResultsAfterCompletion:
 			self.done.emit()
 			return
 
-		self.disableItems()
+		self.__disableItems()
 
-		file = QFileDialog.getSaveFileName(self, self.special["save_file"], "", self.special["vector_image"] + " (*.svg)")[0]
+		# Make report
+		pointHeader = f'"{self.lang.repPoint}","{self.lang.lblLatitude}","{self.lang.lblLongtitude}"\n'
+		
+		if self.lenHorizontalWithTurns > self.lenMeridianWithTurns:
+			directionWithTurns = self.lang.repFlyMeridians
+		elif self.lenHorizontalWithTurns < self.lenMeridianWithTurns:
+			directionWithTurns = self.lang.repFlyHorizontals
+		else:
+			directionWithTurns = self.lang.repFlyEqual
+
+		if self.lenHorizontal > self.lenMeridian:
+			directionWithoutTurns = self.lang.repFlyMeridians
+		elif self.lenHorizontal < self.lenMeridian:
+			directionWithoutTurns = self.lang.repFlyHorizontals
+		else:
+			directionWithoutTurns = self.lang.repFlyEqual
+
+		report = (
+		f'"{self.lang.repCornersDescription}"\n'
+		f'"{self.lang.lblCorner}","{self.lang.lblLongtitude}","{self.lang.lblLatitude}"\n'
+		f'"{self.lang.lblTopLeft}","{self.xTL}","{self.yTL}"\n'
+		f'"{self.lang.lblTopRight}","{self.xTR}","{self.yTR}"\n'
+		f'"{self.lang.lblBottomLeft}","{self.xBL}","{self.yBL}"\n'
+		f'"{self.lang.lblBottomRight}","{self.xBR}","{self.yBR}"\n'
+		f'"{self.lang.lblDelimiters}","{self.xD}","{self.yD}"\n\n'
+		f'"{self.lang.repTotalWithTurns}"\n'
+		f'"{self.lang.repByMeridians}","{self.lenMeridianWithTurns}"\n'
+		f'"{self.lang.repByHorizontals}","{self.lenHorizontalWithTurns}"\n'
+		f'"{self.lang.repBetterFlyBy}","{directionWithTurns}"\n\n'
+		f'"{self.lang.repTotalWithoutTurns}"\n'
+		f'"{self.lang.repByMeridians}","{self.lenMeridian}"\n'
+		f'"{self.lang.repByHorizontals}","{self.lenHorizontal}"\n'
+		f'"{self.lang.repBetterFlyBy}","{directionWithoutTurns}"\n\n'
+		f'"{self.lang.repMeridianPoints}"\n'
+		+ pointHeader + self.pointsMeridian + 
+		f'\n"{self.lang.repHorizontalPoints}"\n'
+		+ pointHeader + self.pointsHorizontal)
+
+		# Save image
+		file = QFileDialog.getSaveFileName(self, self.lang.saveFile, "", self.lang.vectorImage + " (*.svg)")[0]
 		if file == "":
-			self.enableItems()
+			self.__enableItems()
 			return
-
+		
 		rect = self.scene.sceneRect()
 		gen = QSvgGenerator()
 		gen.setFileName(file)
@@ -316,28 +450,183 @@ class AerialWareWidget(QWidget):
 		gen.setDescription(gen.title())
 
 		# Notice: painting will temporarily freeze application because QGraphicsScene::render is not thread safe.
-		# Don't try putting this into python's threads and QThread, doesn't work, I've tried, trust me XD.
+		# Don't try putting this into python's threads and QThread, doesn't work, I've tried, trust me self.xD
 		painter = QPainter(gen)
 		self.scene.render(painter)
 		painter.end()
 
-		self.enableItems()
+		# Save report
+		reportFile = open(os.path.splitext(file)[0] + ".csv", "w")
+		reportFile.write(report)
+		reportFile.close()
 
-	def getResults(self):
-		"""Returns results of the program in a dictionary.
-		Results currently are:
-			scene -- QCustomGraphicsScene. Contains image and flight paths
+		self.__enableItems()
+
+	##################
+
+	# API
+
+	def getPathByMeridiansPointsPx(self):
+		"""Returns list with points in pixels representing flight path by meridians.
+		Please note: all points are sorted as a plane should fly.
 		"""
-		if self.getResultsAfterCompletion:
-			return {
-				"scene": self.scene
-			}
-		return None
+		return self.pathMeridianPointsPx
+
+	def getPathByMeridiansPointsDeg(self):
+		"""Returns list with points in geographic coordinate system representing flight path by meridians.
+		Please note: all points are sorted as a plane should fly.
+		Looks like: [QPointF(long, lat), QPointF(long, lat), ...]
+		"""
+		return self.pathMeridianPointsDeg
+
+	def getPathByMeridiansLinesPx(self):
+		"""Returns list with lines in pixels coordinates without turns representing flight path by meridians.
+		Please note: all points of lines are sorted as a plane should fly.
+		"""
+		return self.pathMeridianLinesPx
+	
+	def getPathByMeridiansLinesWithTurnsPx(self):
+		"""Returns list with lines in pixels with turns representing flight path by meridians.
+		Please note: points of lines are NOT sorted as a plane should fly. You can use even lines, as they're representing turns, to sort things out. Or just get path without turns.
+		"""
+		return self.pathMeridianLinesWithTurnsPx
+
+	def getPathByMeridiansLinesDeg(self):
+		"""Returns list with lines in degrees without turns representing flight path by meridians.
+		Please note: all points of lines are sorted as a plane should fly.
+		"""
+		return self.pathMeridianLinesDeg
+
+	def getPathByMeridiansLinesWithTurnsDeg(self):
+		"""Returns list with lines in degrees with turns representing flight path by meridians.
+		Please note: points of lines are NOT sorted as a plane should fly. You can use even lines, as they're representing turns, to sort things out. Or just get path without turns.
+		"""
+		return self.pathMeridianLinesWithTurnsDeg
+
+	# Horizontals
+	def getPathByHorizontalsPointsPx(self):
+		"""Returns list with points in pixels representing flight path by horizontals.
+		"""
+		return self.pathHorizontalPointsPx
+
+	def getPathByHorizontalsPointsDeg(self):
+		"""Returns list with points in geographic coordinate system representing flight path by horizontals.
+		Looks like: [QPointF(long, lat), QPointF(long, lat), ...]
+		"""
+		return self.pathHorizontalPointsDeg
+
+	def getPathByHorizontalsLinesPx(self):
+		"""Returns list with lines in pixels coordinates without turns representing flight path by horizontals.
+		"""
+		return self.pathHorizontalLinesPx
+
+	def getPathByHorizontalsLinesWithTurnsPx(self):
+		"""Returns list with lines in pixels with turns representing flight path by horizontals.
+		"""
+		return self.pathHorizontalLinesWithTurnsPx
+
+	def getPathByHorizontalsLinesDeg(self):
+		"""Returns list with lines in degrees without turns representing flight path by horizontals.
+		"""
+		return self.pathHorizontalLinesDeg
+
+	def getPathByHorizontalsLinesWithTurnsDeg(self):
+		"""Returns list with lines in degrees with turns representing flight path by horizontals.
+		"""
+		return self.pathHorizontalLinesWithTurnsDeg
+
+	def getPathLengthByMeridians(self):
+		"""Returns length of path by meridians without turns.
+		"""
+		return self.lenMeridian
+	
+	# Lengths
+	def getPathLengthByMeridiansWithTurns(self):
+		"""Returns length of path by meridians with turns. This value is approximate.
+		"""
+		return self.lenMeridianWithTurns
+
+	def getPathLengthByHorizontals(self):
+		"""Returns length of path by horizontal without turns.
+		"""
+		return self.lenHorizontal
+
+	def getPathLengthByHorizontalsWithTurns(self):
+		"""Returns length of path by horizontal with turns. This value is approximate.
+		"""
+		return self.lenHorizontalWithTurns
+
+	def pxToDeg(self, x, y):
+		"""Transforms pixel coordinates of point to Geographic coordinate system.
+		Args:
+			x, y -- X and Y coordinates of point to process.
+		Returns:
+			QPointF(long, lat) -- longtitude and latitude coordinates of given point
+		"""
+		# Please check comments in __stepThree() where we converting step in degrees to pixels in order to understand what we're doing here.
+		# Convert given coordinates to degrees relative to the sides.
+		topX = self.xTL + self.topX * x
+		bottomX = self.xBL + self.bottomX * x
+		# We subtract because Y and lat are not codirectional by default
+		leftY = self.yTL - self.leftY * y
+		rightY = self.yTR - self.rightY * y
+
+		# Find another coordinate for each side by drawing straight line with calculated coordinate for both points.
+		# Intersection of this line and side will give needed point.
+		# Looks like this:
+		# Y
+		# ^
+		# | \ <- This is side
+		# |  \
+		# |---*-----  <- This line is crossing point relative to the side
+		# |    \
+		# |     \
+		# |------------------> X
+		# Containers for points and result.
+		top, bottom, left, right, res = QPointF(), QPointF(), QPointF(), QPointF(), QPointF()
+
+		QLineF.intersect(
+			QLineF(topX, 0, topX, 1),
+			self.top,
+			top
+		)
+		QLineF.intersect(
+			QLineF(bottomX, 0, bottomX, 1),
+			self.bottom,
+			bottom
+		)
+		QLineF.intersect(
+			QLineF(0, leftY, 1, leftY),
+			self.left,
+			left
+		)
+		QLineF.intersect(
+			QLineF(0, rightY, 1, rightY),
+			self.right,
+			right
+		)
+
+		# We've got coordinates for each side where given point should lie.
+		# Let's draw lines throgh them like this:
+		#  ________________________
+		# |    \                   |
+		# |_____\__________________|
+		# |      \                 |
+		# |_______\________________|
+		# Lines are drawn in geographic system, not in pixels.
+		# Their intersection will return given point in geographic system.
+		QLineF.intersect(
+			QLineF(top, bottom),
+			QLineF(left, right),
+			res
+		)
+		return res
 
 	##################
 	
 	# Misc stuff
-	def enableItems(self):
+
+	def __enableItems(self):
 		"""Enables controls
 		"""
 		self.scene.setEnabled(True)
@@ -346,7 +635,7 @@ class AerialWareWidget(QWidget):
 		self.btnIncreaseZoom.setEnabled(True)
 		self.btnNext.setEnabled(True)
 
-	def disableItems(self):
+	def __disableItems(self):
 		"""Disables controls
 		"""
 		self.scene.setEnabled(False)
@@ -355,95 +644,100 @@ class AerialWareWidget(QWidget):
 		self.btnIncreaseZoom.setEnabled(False)
 		self.btnNext.setEnabled(False)
 
-	def changeLanguage(self):
-		"""Changes app language.
-		Uses unified interface, but doesn't check if file is valid language pack. Please refer to any default language as an example if you want to make translations.
+	def __changeLanguage(self):
+		"""Changes app language. Uses _LanguageChanger, check it's description for more.
 		"""
 		# Get language
-		lang = self.comboLang.currentData()
+		self.lang.setLanguage(self.comboLang.currentData())
 
-		# Get special data
-		self.special = lang.getSpecial()
-		
 		# Change text of labels and buttons
-		controls = lang.getControls()
-		for widget in controls:
-			getattr(self, widget).setText(controls[widget])
-		
+		self.lblZoom.setText(self.lang.lblZoom)
+		self.lblCorner.setText(self.lang.lblCorner)
+		self.lblLongtitude.setText(self.lang.lblLongtitude)
+		self.lblLatitude.setText(self.lang.lblLatitude)
+		self.lblTopLeft.setText(self.lang.lblTopLeft)
+		self.lblTopRight.setText(self.lang.lblTopRight)
+		self.lblBottomLeft.setText(self.lang.lblBottomLeft)
+		self.lblBottomRight.setText(self.lang.lblBottomRight)
+		self.lblDelimiters.setText(self.lang.lblDelimiters)
+		self.btnOpenImage.setText(self.lang.btnOpenImage)
+
 		# Change text of task labels
 		start = "<html><head/><body><div style='font-size: 12pt;'>"
 		end = "</div></body></html>"
-
-		task = lang.getTaskOne()
-		self.lblTask_1.setText(start + f"""
-			<p style='font-size: 14pt; text-align: center;'><b>{task["heading"]}</b></p>
-			<p><b>{task["heading_about"]}</b></p>
-			<p>{task["about_1"]}</p>
-			<p>{task["about_2"]}</p>
-			<p><b>{task["working_title"]}</b></p>
-			<p>{task["working"]}</p>
-			<p><b>{task["this_step_bold"]}</b>{task["this_step"]}</p>
-			<p><b>{task["note_bold"]}</b>{task["note"]}</p>
-			""" + end )
-
-		task = lang.getTaskTwo()
-		self.lblTask_2.setText(start + f"""
-			<p><b>{task["set_title"]}</b></p>
+		
+		self.lblTask1.setText(start + f"""
+			<p style='font-size: 14pt; text-align: center;'><b>{self.lang.heading}</b></p>
+			<p><b>{self.lang.headingAbout}</b></p>
+			<p>{self.lang.about1}</p>
+			<p>{self.lang.about2}</p>
+			<p><b>{self.lang.workingTitle}</b></p>
+			<p>{self.lang.working}</p>
+			<p><b>{self.lang.thisStepBold}</b>{self.lang.thisStep}</p>
+			<p><b>{self.lang.noteStep1Bold}</b>{self.lang.noteStep1}</p>
+			""" + end)
+			
+		self.lblTask2.setText(start + f"""
+			<p><b>{self.lang.setTitle}</b></p>
 			<ul>
-				<li>{task["coordinates"]}</li>
-				<li>{task["delimiters"]}</li>
+				<li>{self.lang.coordinates}</li>
+				<li>{self.lang.delimiters}</li>
 			</ul>
 		""" + end)
 		
-		task = lang.getTaskThree()
 		if self.getResultsAfterCompletion:
-			btnText = self.special["done"]
+			btnText = self.lang.done
 		else:
-			btnText = self.special["save"]
+			btnText = self.lang.save
 
-		self.lblTask_3.setText(start + f"""
-			<p>{task["intro"]}<b>{task["click_bold"]}</b></p>
-			<p>{task["path"]}</p>
-			<p>{task["save_1"]} <b>\"{btnText}\"</b>{task["save_2"]}</p>
-			<p><b>{task["legend_title"]}</b></p>
+		if self.endIsHere:
+			self.btnNext.setText(btnText)
+		else:
+			self.btnNext.setText(self.lang.btnNext)
+
+		self.lblTask3.setText(start + f"""
+			<p>{self.lang.intro}<b>{self.lang.clickBold}</b></p>
+			<p>{self.lang.path}</p>
+			<p>{self.lang.save1} <b>\"{btnText}\"</b>{self.lang.save2}</p>
+			<p><b>{self.lang.legendTitle}</b></p>
 			<ul>
-				<li><span style="color: red;">{task["red"]}</span>{task["line_1"]}<span style="color: green;">{task["green"]}</span>{task["line_2"]}</li>
-				<li><b>{task["dashed_bold"]}</b>{task["line_3"]}</li>
+				<li><span style="color: red;">{self.lang.red}</span>{self.lang.line1}<span style="color: green;">{self.lang.green}</span>{self.lang.line2}</li>
+				<li><b>{self.lang.dashedBold}</b>{self.lang.line3}</li>
 			</ul>
-			<p><b>{task["note_bold"]}</b>{task["note"]} ¯\_(ツ)_/¯</p>
+			<p><b>{self.lang.noteStep3Bold}</b>{self.lang.noteStep3} ¯\_(ツ)_/¯</p>
 		""" + end)
 
 		if self.errorsAreHere and self.lblDataError.text() != "":
-			self.stepThree()
+			self.__stepThree()
 		
-	def turnPage(self):
+	def __turnPage(self):
 		"""Turns page of "Steps"
 		"""
 		self.Steps.setCurrentIndex(self.Steps.currentIndex() + 1)
 
-	def increaseZoom(self):
+	def __increaseZoom(self):
 		"""Zooms image in
 		"""
 		value = float(self.editZoom.text()) + 10
 		self.editZoom.setText(str(value))
-		self.setZoom()
+		self.__setZoom()
 
-	def decreaseZoom(self):
+	def __decreaseZoom(self):
 		"""Zooms image out
 		"""
 		value = float(self.editZoom.text()) - 10
 		if value >= 10:
 			self.editZoom.setText(str(value))
-			self.setZoom()
+			self.__setZoom()
 
-	def setZoom(self):
+	def __setZoom(self):
 		"""Sets zoom
 		"""
 		try:
 			value = float(self.editZoom.text()) * 0.01
 		except ValueError:
 			self.editZoom.setText(str(self.zoom * 100))
-			self.setZoom()
+			self.__setZoom()
 			return
 		self.Image.resetTransform()
 		self.Image.scale(value, value)
@@ -451,15 +745,41 @@ class AerialWareWidget(QWidget):
 		
 ##################
 
-# Custom subclasses
+# Custom classes
 
-class QCustomScene(QGraphicsScene):
+class _LanguageChanger():
+	"""Class for loading languages.
+	Please set fallback language or this won't work.
+	Please refer to any default language as an example if you want to make translations.
+	"""
+	def __init__(self, fallback = None):
+		self.fallback = fallback
+
+	def setFallback(self, fallback):
+		"""Sets fallback language.
+		"""
+		self.fallback = fallback
+
+	def setLanguage(self, lang):
+		"""Sets current language.
+		Basically writes variables from file to it's fields. If given language is different from fallback, sets fallback first to prevent any errors.
+		"""
+		if lang.name != self.fallback.name:
+			self.setLanguage(self.fallback)
+		vs = lang.__dict__
+		for k in vs:
+			if k[0] != "_":
+				setattr(self, k, vs[k])
+
+class _QCustomScene(QGraphicsScene):
 	"""Subclass of QGraphicsScene. Does a lot of program-specific stuff.
 	Works with custom polygons, re-implements selection, draws paths.
 	"""
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs) 
 		self.customSelectedItems = []
+		self.rowLines = []
+		self.colLines = []
 		self.enabled = True
 
 	def setEnabled(self, enabled):
@@ -475,8 +795,17 @@ class QCustomScene(QGraphicsScene):
 			
 		if event.button() != Qt.RightButton:
 			return
-		item = self.itemAt(event.scenePos(), QTransform())
-		if not isinstance(item, QCustomGraphicsPolygonItem):
+
+		# Find item at selected position. QGraphicsScene::itemAt() uses bounding rectangle instead of shape. And if user clicks on line, it'll return the line.
+		# So the only solution is to parse all objects and find which one contains point user clicked at.
+		selected = None
+		click = event.scenePos()
+		for item in self.items():
+			if isinstance(item, _QCustomGraphicsPolygonItem) and item.shape().contains(click):
+				selected = item
+				break
+
+		if selected == None:
 			return
 
 		if item in self.customSelectedItems:
@@ -491,6 +820,12 @@ class QCustomScene(QGraphicsScene):
 	def selectedItems(self):
 		return self.customSelectedItems
 
+	def getMeridianLines(self):
+		return self.colLines
+	
+	def getHorizontalLines(self):
+		return self.rowLines
+
 	def drawPaths(self):
 		"""Draws both flight path
 		"""
@@ -498,31 +833,32 @@ class QCustomScene(QGraphicsScene):
 		for item in self.items():
 			if isinstance(item, QGraphicsLineItem):
 				self.removeItem(item)
+		self.rowLines, self.colLines = [], []
 		# Draw paths
 		items = self.selectedItems()
 		self.drawPath(items, True)
 		self.drawPath(items, False)
 		self.update()
 	
-	def drawPath(self, items, use_rows):
+	def drawPath(self, items, useRows):
 		"""Draws one flight path
 		Args
 		items -- squares.
-		use_rows:
+		useRows:
 			True -- go by rows
 			False -- go by cols
 		"""
-		if use_rows:
+		if useRows:
 			way = "row"
-			sort_second = "col"
-			old_side = "left"
-			new_side = "right"
+			sortSecond = "col"
+			oldSide = "left"
+			newSide = "right"
 			color = QColor(255, 10, 10)
 		else:
 			way = "col"
-			sort_second = "row"
-			old_side = "top"
-			new_side = "bottom"
+			sortSecond = "row"
+			oldSide = "top"
+			newSide = "bottom"
 			color = QColor(10, 255, 10)
 		
 		# Pen for main lines
@@ -537,45 +873,52 @@ class QCustomScene(QGraphicsScene):
 		pen2.setCosmetic(True)
 
 		# Sort selected items
-		items.sort(key=lambda item: item.getRowCol()[sort_second])
+		items.sort(key=lambda item: item.getRowCol()[sortSecond])
 		items.sort(key=lambda item: item.getRowCol()[way])
 
+		def addItem(item):
+			self.addItem(item)
+			if useRows:
+				self.rowLines.append(item)
+			else:
+				self.colLines.append(item)
+
 		# Draw lines
-		new_pos = True # Shows if we're will be at new col/row at next iteration
-		prev_line = None # Previously drawn line
-		is_last_point_reversed = False # Shows from which end draw turning line
+		newPos = True # Shows if we're will be at new col/row at next iteration
+		prevLine = None # Previously drawn line
+		isLastPointReversed = False # Shows from which end draw turning line
 		for i in range(len(items)):
 			item = items[i]
-			if new_pos:
-				side1 = item.getSides()[old_side]
-				new_pos = False
+			if newPos:
+				side1 = item.getSides()[oldSide]
+				newPos = False
 			pos = item.getRowCol()[way]
 			try:
-				next_pos = items[i + 1].getRowCol()[way]
+				nextPos = items[i + 1].getRowCol()[way]
 			except:
-				next_pos = pos + 1
-			if pos != next_pos:
-				side2 = item.getSides()[new_side]
+				nextPos = pos + 1
+			if pos != nextPos:
+				side2 = item.getSides()[newSide]
 				lineF = QLineF(side1, side2)
 				line = QGraphicsLineItem(lineF)
 				line.setPen(pen)
-				self.addItem(line)
-				new_pos = True
-				if prev_line != None:
-					if is_last_point_reversed:
-						start = prev_line.p2()
+				addItem(line)
+				newPos = True
+				if prevLine != None:
+					if isLastPointReversed:
+						start = prevLine.p2()
 						end = side2
 					else:
-						start = prev_line.p1()
+						start = prevLine.p1()
 						end = side1
-					new_line = QGraphicsLineItem(QLineF(start, end))
-					new_line.setPen(pen2)
-					self.addItem(new_line)
-				is_last_point_reversed = not is_last_point_reversed
-				prev_line = lineF
+					newLine = QGraphicsLineItem(QLineF(start, end))
+					newLine.setPen(pen2)
+					addItem(newLine)
+				isLastPointReversed = not isLastPointReversed
+				prevLine = lineF
 
 
-class QCustomGraphicsPolygonItem(QGraphicsPolygonItem):
+class _QCustomGraphicsPolygonItem(QGraphicsPolygonItem):
 	"""Represents cell of a grid. Contains program-specific methods.
 	"""
 	def __init__(self, *args, **kwargs):
@@ -601,7 +944,7 @@ class QCustomGraphicsPolygonItem(QGraphicsPolygonItem):
 		self.right = getSide(points[1], points[2])
 		self.top = getSide(points[0], points[1])
 		self.bottom = getSide(points[3], points[2])
-	
+
 	def getSides(self):
 		"""Returns dictionary of sides
 		"""
@@ -641,9 +984,8 @@ class AerialWare():
 			self.program.done.connect(self.slot)
 		3. Get results. In your slot call getResults() method of the program:
 			def slot(self):
-				results = self.program.getResults()
 				# Process results
-				...
+				# ...
 		4. Close the program. It is your responsibility to do this. You may want to leave the program and re-process results so user will not go through the whole stuff again.
 	"""
 
