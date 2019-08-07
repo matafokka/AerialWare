@@ -19,8 +19,8 @@ There is no installer yet, so please follow instructions below. *Unless there is
 
 # I wanna use it in my software!
 Great! AerialWare has full fledged API and it's easy to integrate. Just follow these steps:
-1. Copy AerialWare to directory inside your app.
-    `Include AerialWare.py`
+1. Copy AerialWare to directory inside your app and import it:
+    `import AerialWare.py`
 2. Create instance of this class and call getQWidget():
     `self.program = AerialWare().getQWidget()`
 3. Put it somewhere in your app.
