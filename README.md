@@ -26,7 +26,7 @@ Great! AerialWare has full fledged API and it's easy to integrate. Just follow t
 3. Put it somewhere in your app.
 4. When user is done AerialWare will emit corresponding signal. Connect 'done' signal to your slot:
     `self.program.done.connect(self.slot)`
-5. Get results. In your slot call getResults() method of the program:
+5. Get results. In your slot call any method of the program as you want:
     ```
     def slot(self):
       # Process results
