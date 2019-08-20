@@ -1,13 +1,17 @@
 # AerialWare
-AerialWare calculates and draws paths for aerial photography
+AerialWare is a software for designing aerial photography.
 
 # About AerialWare
-AerialWare calculates and draws paths for aerial photography.
+AerialWare is a software for designing aerial photography.
+
+AerialWare automates a lot of things and gives you an image with grid and report with some useful calculated stuff.
 
 Main feature of AerialWare is transformation of coordinate system instead of image transformation. It lets you see your image without distortions caused by transformation.
 
+Another feature is user defined grid. AerialWare lets you set custom delimiters, so you can get either whatever you want or some standard grid depending on entered values.
+
 # Working with a program:
-Everything is written in the program, no need to read other resources. Proccess is divided into 3 steps and shouldn't take a lot of time. Follow instructions and click "Next" to go to the next step.
+Everything is written in the program, no need to read other resources. Process is divided into 4 steps and shouldn't take a lot of time. Follow instructions and click "Next" to go to the next step.
 
 # Installation
 There is no installer yet, so please follow instructions below. *Unless there is some crazy guy that maintains this stuff for your distro XD*
