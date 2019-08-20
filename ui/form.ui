@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1033</width>
-    <height>621</height>
+    <width>1044</width>
+    <height>718</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -264,13 +264,8 @@
                <height>16777215</height>
               </size>
              </property>
-             <property name="font">
-              <font>
-               <pointsize>12</pointsize>
-              </font>
-             </property>
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Step 1 goes here. If you somehow see this text, your languages are corrupted. Please, download AerialWare again.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>Step 1</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignBottom|Qt::AlignJustify</set>
@@ -305,9 +300,6 @@
            </property>
            <item>
             <widget class="QLabel" name="lblDataError">
-             <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
              <property name="wordWrap">
               <bool>true</bool>
              </property>
@@ -333,13 +325,8 @@
                <height>16777215</height>
               </size>
              </property>
-             <property name="font">
-              <font>
-               <pointsize>12</pointsize>
-              </font>
-             </property>
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Step 2 goes here. If you somehow see this text, your languages are corrupted. Please, download AerialWare again.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>Step 2</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignBottom|Qt::AlignJustify</set>
@@ -354,14 +341,14 @@
              <item row="3" column="1">
               <widget class="QLineEdit" name="xBottomLeft">
                <property name="text">
-                <string>40</string>
+                <string>38.957416</string>
                </property>
               </widget>
              </item>
              <item row="1" column="1">
               <widget class="QLineEdit" name="xTopLeft">
                <property name="text">
-                <string>60</string>
+                <string>38.957772</string>
                </property>
               </widget>
              </item>
@@ -378,14 +365,14 @@
              <item row="4" column="1">
               <widget class="QLineEdit" name="xBottomRight">
                <property name="text">
-                <string>110</string>
+                <string>38.976829</string>
                </property>
               </widget>
              </item>
              <item row="1" column="2">
               <widget class="QLineEdit" name="yTopLeft">
                <property name="text">
-                <string>60</string>
+                <string>55.814816</string>
                </property>
               </widget>
              </item>
@@ -402,14 +389,14 @@
              <item row="4" column="2">
               <widget class="QLineEdit" name="yBottomRight">
                <property name="text">
-                <string>10</string>
+                <string>55.809065</string>
                </property>
               </widget>
              </item>
              <item row="3" column="2">
               <widget class="QLineEdit" name="yBottomLeft">
                <property name="text">
-                <string>30</string>
+                <string>55.808971</string>
                </property>
               </widget>
              </item>
@@ -424,9 +411,9 @@
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QLabel" name="lblLongtitude">
+              <widget class="QLabel" name="lblLongitude">
                <property name="text">
-                <string>Longtitude</string>
+                <string>Longitude</string>
                </property>
                <property name="alignment">
                 <set>Qt::AlignCenter</set>
@@ -456,21 +443,21 @@
              <item row="2" column="1">
               <widget class="QLineEdit" name="xTopRight">
                <property name="text">
-                <string>100</string>
+                <string>38.976721</string>
                </property>
               </widget>
              </item>
              <item row="2" column="2">
               <widget class="QLineEdit" name="yTopRight">
                <property name="text">
-                <string>50</string>
+                <string>55.814876</string>
                </property>
               </widget>
              </item>
              <item row="6" column="1">
               <widget class="QLineEdit" name="xDelimiter">
                <property name="text">
-                <string>2</string>
+                <string>0.0005</string>
                </property>
               </widget>
              </item>
@@ -487,7 +474,7 @@
              <item row="6" column="2">
               <widget class="QLineEdit" name="yDelimiter">
                <property name="text">
-                <string>2</string>
+                <string>0.0005</string>
                </property>
               </widget>
              </item>
@@ -497,7 +484,7 @@
                 <string>Corner</string>
                </property>
                <property name="alignment">
-                <set>Qt::AlignCenter</set>
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
                </property>
               </widget>
              </item>
@@ -545,7 +532,176 @@
               </font>
              </property>
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Step 3 goes here. If you somehow see this text, your languages are corrupted. Please, download AerialWare again.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>Step 3, where we check</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignBottom|Qt::AlignJustify</set>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="Step4">
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <widget class="QLabel" name="lblTask4_1">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Now let's think about hardware. You need a camera that can capture h x w meters terrain. Please enter resolution (meters in pixel) you want to have, so we can calculate needed resolution of camera.</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignBottom|Qt::AlignJustify</set>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QGridLayout" name="gridLayout_2">
+             <item row="0" column="0">
+              <widget class="QLabel" name="lblDesiredRes">
+               <property name="text">
+                <string>Desired resolution (m/px):</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="editRes">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QLabel" name="lblRes">
+             <property name="text">
+              <string>Calculated resolution of camera (px):</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="lblCamRes">
+             <property name="text">
+              <string/>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="lblTask4_2">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>Ok, now think about how high you want to fly. It's better to fly as low as possible to burn less fuel. But flight height affects focal length. So just take your time and tinker this value unitl you'll get acceptable results.</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignBottom|Qt::AlignJustify</set>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QLabel" name="lblHeight">
+               <property name="text">
+                <string>Flight height (m):</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="lblFocal">
+               <property name="text">
+                <string>Focal lenght (mm):</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="lblFocalResult">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="editHeight"/>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QLabel" name="lblTask4_3">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>16777215</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;When you're done click &amp;quot;Save&amp;quot; to save your results or whatever, lol&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignBottom|Qt::AlignJustify</set>
