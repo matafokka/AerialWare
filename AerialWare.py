@@ -56,6 +56,8 @@ class AerialWareWidget(QWidget):
 		self.getResultsAfterCompletion = getResultsAfterCompletion
 		# Load UI from file
 		loadUi('ui/form.ui', self)
+		# Create absolute path to program directory. Needed for loading some files.
+		self._absPath = os.path.dirname(os.path.abspath(__file__))
 		# Create scene
 		self.scene = _QCustomScene()
 		self.Image.setScene(self.scene)
@@ -97,7 +99,7 @@ class AerialWareWidget(QWidget):
 		self.editZoom.textEdited.connect(self.__setZoom)
 
 		# Load languages
-		langDir = os.path.dirname(__file__) + "/lang/"
+		langDir = self._absPath + "/lang/"
 		self.lastLang = langDir + ".LastLang"
 		for lang in os.listdir(langDir):
 			ext = os.path.splitext(lang)
@@ -139,7 +141,7 @@ class AerialWareWidget(QWidget):
 		try:
 			self.__loadImage(argv[1])
 		except IndexError:
-			self.__loadImage(os.path.dirname(__file__) + "/ui/img/logo.png")
+			self.__loadImage(self._absPath + "/ui/img/logo.png")
 
 	def __loadImage(self, path = None):
 		# Open file dialog and get path or try to use user's path
@@ -1014,7 +1016,7 @@ class _QCustomScene(QGraphicsScene):
 		self.drawPath(items, True)
 		self.drawPath(items, False)
 		self.update()
-	
+
 	def drawPath(self, items, useRows):
 		"""Draws one flight path
 		Args
