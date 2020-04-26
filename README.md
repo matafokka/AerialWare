@@ -38,7 +38,7 @@ Great! AerialWare has full fledged API and it's easy to integrate. Just follow t
     ```
 6. Close the program. It is your responsibility to do this. You may want to leave the program and re-process results so user will not go through the whole stuff again.
 
-You can find the documentation [here]https://github.com/matafokka/AerialWare/wiki/AerialWare-API
+You can find the documentation [here]: https://github.com/matafokka/AerialWare/wiki/AerialWare-API
 
 # I wanna translate AerialWare!
 Awesome! Just follow these steps:
