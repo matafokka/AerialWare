@@ -19,13 +19,18 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMessageBox, QGraphicsPixmapItem, QGraphicsScene, QGraphicsRectItem, QGraphicsLineItem, QGraphicsPolygonItem, QWidget, QVBoxLayout, QLineEdit, QLabel
 from PyQt5.QtSvg import QSvgGenerator
-from PyQt5.QtGui import QPixmap, QPolygonF, QBrush, QPen, QColor, QTransform, QPainter, QIntValidator, QDoubleValidator
+from PyQt5.QtGui import QPixmap, QImage, QPolygonF, QBrush, QPen, QColor, QTransform, QPainter, QIntValidator, QDoubleValidator
 from PyQt5.QtCore import QPointF, QLineF, Qt, pyqtSignal
 from PyQt5.uic import loadUi # For loading ui files
-from sys import argv, exit
+from sys import argv, exit, modules
 import importlib
+import importlib.util
 import os
 import math
+
+
+# Absolute path to the program directory. Needed for loading some files.
+programPath = os.path.dirname(os.path.abspath(__file__))
 
 # Main window of application
 class Window(QMainWindow):
@@ -34,7 +39,7 @@ class Window(QMainWindow):
 	def __init__(self):
 		super().__init__()
 		# Load UI from file
-		loadUi('ui/mainwindow.ui', self)
+		loadUi(programPath + "/ui/mainwindow.ui", self)
 		# Add AerialWare
 		self.content = AerialWareWidget()
 		self.centralWidget().layout().addWidget(self.content)
@@ -55,9 +60,7 @@ class AerialWareWidget(QWidget):
 		# Set flag to return results after user is done with the program.
 		self.getResultsAfterCompletion = getResultsAfterCompletion
 		# Load UI from file
-		loadUi('ui/form.ui', self)
-		# Create absolute path to program directory. Needed for loading some files.
-		self._absPath = os.path.dirname(os.path.abspath(__file__))
+		loadUi(programPath + "/ui/form.ui", self)
 		# Create scene
 		self.scene = _QCustomScene()
 		self.Image.setScene(self.scene)
@@ -99,14 +102,17 @@ class AerialWareWidget(QWidget):
 		self.editZoom.textEdited.connect(self.__setZoom)
 
 		# Load languages
-		langDir = self._absPath + "/lang/"
+		langDir = programPath + "/lang/"
 		self.lastLang = langDir + ".LastLang"
 		for lang in os.listdir(langDir):
 			ext = os.path.splitext(lang)
 			if os.path.isfile(langDir + lang) and ext[1] == ".py":
-				lg = importlib.import_module("lang." + ext[0])
-				name = lg.name
-				self.comboLang.addItem(name, lg)
+				spec = importlib.util.spec_from_file_location("lang", langDir + lang)
+				lang = importlib.util.module_from_spec(spec)
+				spec.loader.exec_module(lang)
+				
+				name = lang.name
+				self.comboLang.addItem(name, lang)
 		self.comboLang.currentIndexChanged.connect(self.__changeLanguage)
 		
 		# Try to use previously selected language or English.
@@ -141,7 +147,26 @@ class AerialWareWidget(QWidget):
 		try:
 			self.__loadImage(argv[1])
 		except IndexError:
-			self.__loadImage(self._absPath + "/ui/img/logo.png")
+			self.__loadImage(programPath + "/ui/img/logo.png")
+
+	def loadImageFromFile(self, path: str):
+		"""Loads image from given path and jumps to Step 2
+		"""
+		img = QPixmap(path)
+		self.__loadQPixmap(img)
+		self.__stepTwo()
+	
+	def loadImageFromQImage(self, image: QImage):
+		"""Loads image from given QImage and jumps to Step 2
+		"""
+		self.__loadQPixmap(QPixmap.fromImage(image))
+		self.__stepTwo()
+	
+	def loadImageFromQPixmap(self, pixmap: QPixmap):
+		"""Loads image from given QPixmap and jumps to Step 2
+		"""
+		self.__loadQPixmap(pixmap)
+		self.__stepTwo()
 
 	def __loadImage(self, path = None):
 		# Open file dialog and get path or try to use user's path
@@ -152,8 +177,11 @@ class AerialWareWidget(QWidget):
 
 		# Create a pixmap from file
 		img = QPixmap(file)
+		self.__loadQPixmap(img)
 
-		# Check if it's an image and draw it or raise error message
+	def __loadQPixmap(self, img: QPixmap):
+		"""Draws QPixmap or raises an error message
+		"""
 		if not img.isNull():
 			self.scene.clear()
 			item = QGraphicsPixmapItem(img)
