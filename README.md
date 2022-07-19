@@ -1,3 +1,11 @@
+# Deprecated
+
+Deprecated in favor of [SynthFlight](https://github.com/matafokka/SynthFlight).
+
+AerialWare was approved by an idiot. It shouldn't be used by anyone, shouldn't be a reference for any future projects, and shouldn't even exist.
+
+SynthFlight, on the other hand, is working as it should. Please, use SynthFlight instead of AerialWare.
+
 # AerialWare
 AerialWare is a software for designing aerial photography.
 
